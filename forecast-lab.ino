@@ -4,6 +4,7 @@
 #include "web.h"
 #include "alerts.h"
 #include "display.h"
+#include "weather.h"
 
 #include <Adafruit_NeoPixel.h>
 
@@ -13,6 +14,9 @@ AppConfig config;
 Adafruit_NeoPixel led(1, 8, NEO_GRB + NEO_KHZ800);
 
 unsigned long lastAlertUpdate = 0;
+unsigned long lastWeatherUpdate = 0;
+unsigned long lastBlink = 0;
+bool ledState = false;
 
 void setup()
 {
@@ -40,34 +44,41 @@ void loop()
 {
   handleWeb();
 
+  // тривога
   if (millis() - lastAlertUpdate > 10000)
   {
     lastAlertUpdate = millis();
-
     updateAlert(config.region);
-
-    Serial.println(getAlertState() ? "ALERT!" : "safe");
-  }
-  if (getAlertState())
-  {
-    led.setPixelColor(0, led.Color(255, 0, 0)); // червоний
-  }
-  else
-  {
-    led.setPixelColor(0, 0); // викл
-  }
-  led.show();
-
-  static bool hasData = false;
-
-  if (millis() - lastAlertUpdate > 10000)
-  {
-    lastAlertUpdate = millis();
-
-    updateAlert(config.region);
-
     hasData = true;
   }
 
-  updateDisplay(hasAlert(), getAlertState());
+  if (getAlertState())
+  {
+    if (millis() - lastBlink > 500) // кожні 500мс
+    {
+      lastBlink = millis();
+      ledState = !ledState;
+
+      if (ledState)
+        led.setPixelColor(0, led.Color(255, 0, 0));
+      else
+        led.setPixelColor(0, 0);
+
+      led.show();
+    }
+  }
+  else
+  {
+    led.setPixelColor(0, 0);
+    led.show();
+  }
+
+  // погода
+  if (millis() - lastWeatherUpdate > 100000)
+  {
+    lastWeatherUpdate = millis();
+    updateWeather(config.apiKey, config.lat, config.lon);
+  }
+
+  updateDisplay(hasData, getAlertState());
 }
