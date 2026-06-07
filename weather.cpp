@@ -5,6 +5,8 @@
 static bool weatherAvailable = false;
 static float temperature = 0;
 static float temperatureFeels = 0;
+static float humidity = 0;
+static float speed = 0;
 
 static unsigned long lastUpdate = 0;
 static String lastPayload = "";
@@ -65,6 +67,8 @@ void updateWeather(String apiKey, float lat, float lon)
 
   temperature = doc["main"]["temp"];
   temperatureFeels = doc["main"]["feels_like"];
+  humidity = doc["main"]["humidity"];
+  speed = doc["wind"]["speed"];
   weatherIcon = doc["weather"][0]["icon"].as<String>();
   weatherAvailable = true;
 
@@ -85,6 +89,16 @@ float getTemperature()
 float getTemperatureFeels()
 {
   return temperatureFeels;
+}
+
+float getHumidity()
+{
+  return humidity;
+}
+
+float getWindSpeed()
+{
+  return speed;
 }
 
 String getWeatherIcon()

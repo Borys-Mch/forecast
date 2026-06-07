@@ -3,6 +3,7 @@
 #include <Adafruit_ST7789.h>
 #include <U8g2_for_Adafruit_GFX.h>
 #include <SPI.h>
+#include <WiFi.h>
 #include "weather.h"
 #include "icons.h"
 #include "systemicons.h"
@@ -35,7 +36,7 @@ void drawBitmapTransparent(int x, int y, const uint16_t *bitmap, int w, int h)
   }
 }
 
-const uint16_t *getWeatherIconBitmap(String icon)
+const uint16_t *getWeatherIcon(String icon)
 {
   if (icon == "01d")
     return weather_clear;
@@ -65,9 +66,24 @@ const uint16_t *getWeatherIconBitmap(String icon)
   return weather_clouds; // дефолт
 }
 
-const uint16_t *getAlertIconBitmap(bool alert)
+const uint16_t *getAlertIcon(bool alert)
 {
   return alert ? system_alert : system_no_alert;
+}
+
+const uint16_t *getWiFiIcon()
+{
+  if (WiFi.status() != WL_CONNECTED)
+    return system_no_wifi;
+
+  int rssi = WiFi.RSSI();
+
+  if (rssi > -60)
+    return system_wifi_3; // сильний
+  else if (rssi > -70)
+    return system_wifi_2; // середній
+  else
+    return system_wifi_1; // слабкий
 }
 
 void initDisplay()
@@ -90,11 +106,15 @@ void updateDisplay(bool hasData, bool alert)
   static String lastText = "";
   static float lastTemp = -1000;
   static float lastFeels = -1000;
+  static float lastHumidity = -1000;
+  static float lastWindSpeed = -1000;
 
   String text;
-  const uint16_t *iconAlert = getAlertIconBitmap(alert);
+  const uint16_t *iconAlert = getAlertIcon(alert);
+  const uint16_t *wifiIcon = getWiFiIcon();
 
   drawBitmapTransparent(5, 10, iconAlert, 20, 20);
+  drawBitmapTransparent(tft.width() - 25, 10, wifiIcon, 20, 20);
 
   if (!hasData)
     text = "Немає даних";
@@ -126,13 +146,17 @@ void updateDisplay(bool hasData, bool alert)
   {
     float temp = getTemperature();
     float feels_like = getTemperatureFeels();
+    float humidity = getHumidity();
+    float speed = getWindSpeed();
 
     if (abs(temp - lastTemp) > 0.1)
     {
       lastTemp = temp;
       lastFeels = feels_like;
+      lastHumidity = humidity;
+      lastWindSpeed = speed;
 
-      int iconSize = 70;
+      int iconSize = 67;
 
       int x = tft.width() - 230; // 🔥 вся група (іконка + текст)
       int y = 55;
@@ -141,22 +165,50 @@ void updateDisplay(bool hasData, bool alert)
       tft.fillRect(x, y, 200, 80, ST77XX_BLACK);
 
       String iconCode = getWeatherIcon();
-      const uint16_t *iconBitmap = getWeatherIconBitmap(iconCode);
+      const uint16_t *iconBitmap = getWeatherIcon(iconCode);
 
       drawBitmapTransparent(x, y, iconBitmap, iconSize, iconSize);
 
-      tft.setCursor(x + iconSize + 20, y + 10);
-      tft.setTextSize(4);
-      tft.setTextColor(ST77XX_CYAN);
+      u8g2.setFont(u8g2_font_fub42_tn);
+      u8g2.setCursor(x + iconSize + 20, y + 55); // Y = baseline!
 
-      tft.print(String(temp, 1));
-      tft.print("C");
+      u8g2.setForegroundColor(tft.color565(86, 174, 194));
+      u8g2.print((int)temp);
 
-      tft.setCursor(x + 20, y + iconSize + 20);
-      tft.setTextSize(2);
-      tft.setTextColor(tft.color565(180, 180, 180));
-      tft.print("Feels like: ");
-      tft.print(String(feels_like, 1));
+      u8g2.setFont(u8g2_font_10x20_t_cyrillic);
+      u8g2.setCursor(x + iconSize + 100, y + 20);
+      u8g2.print("o");
+
+      tft.drawLine(200, 70, 180, 110, tft.color565(120, 120, 120));
+
+      u8g2.setFont(u8g2_font_fub20_tn);
+      u8g2.setCursor(x + 190, y + 55);
+      u8g2.setForegroundColor(tft.color565(120, 120, 120));
+      u8g2.print((int)feels_like);
+
+      tft.drawLine(10, 140, 230, 140, tft.color565(99, 99, 99));
+
+      drawBitmapTransparent(15, 150, system_humidity, 20, 20);
+
+      u8g2.setFont(u8g2_font_fub20_tn);
+      u8g2.setCursor(x + 35, y + 115);
+      u8g2.setForegroundColor(tft.color565(150, 150, 150));
+      u8g2.print((int)humidity);
+
+      u8g2.setFont(u8g2_font_10x20_t_cyrillic);
+      u8g2.setCursor(x + 70, y + 115);
+      u8g2.print("%");
+
+      drawBitmapTransparent(120, 150, system_wind, 20, 20);
+
+      u8g2.setFont(u8g2_font_fub20_tn);
+      u8g2.setCursor(x + 140, y + 115);
+      u8g2.setForegroundColor(tft.color565(150, 150, 150));
+      u8g2.print(String(speed, 1));
+
+      u8g2.setFont(u8g2_font_10x20_t_cyrillic);
+      u8g2.setCursor(x + 190, y + 115);
+      u8g2.print("м/с");
     }
   }
 }
