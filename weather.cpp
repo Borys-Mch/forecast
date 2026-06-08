@@ -7,10 +7,10 @@ static float temperature = 0;
 static float temperatureFeels = 0;
 static float humidity = 0;
 static float speed = 0;
-
 static unsigned long lastUpdate = 0;
 static String lastPayload = "";
-static String weatherIcon = "";
+static int weatherCode = 0;
+static bool isDay = true;
 
 // кеш 5 хв
 bool fetchWeatherJson(String &payload, String url)
@@ -42,11 +42,10 @@ bool fetchWeatherJson(String &payload, String url)
 
 void updateWeather(String apiKey, float lat, float lon)
 {
-  String url = "https://api.openweathermap.org/data/2.5/weather?lat=" +
-               String(lat, 6) +
-               "&lon=" + String(lon, 6) +
-               "&appid=" + apiKey +
-               "&units=metric";
+  String url = "http://api.weatherapi.com/v1/current.json?key=" +
+               apiKey +
+               "&q=" + String(lat, 6) + "," + String(lon, 6) +
+               "&aqi=no";
 
   String payload;
 
@@ -65,11 +64,14 @@ void updateWeather(String apiKey, float lat, float lon)
     return;
   }
 
-  temperature = doc["main"]["temp"];
-  temperatureFeels = doc["main"]["feels_like"];
-  humidity = doc["main"]["humidity"];
-  speed = doc["wind"]["speed"];
-  weatherIcon = doc["weather"][0]["icon"].as<String>();
+  temperature = doc["current"]["temp_c"];
+  temperatureFeels = doc["current"]["feelslike_c"];
+  humidity = doc["current"]["humidity"];
+  speed = doc["current"]["wind_kph"];
+  int code = doc["current"]["condition"]["code"];
+  weatherCode = doc["current"]["condition"]["code"];
+  isDay = doc["current"]["is_day"] == 1;
+
   weatherAvailable = true;
 
   Serial.println("=== WEATHER ===");
@@ -98,10 +100,15 @@ float getHumidity()
 
 float getWindSpeed()
 {
-  return speed;
+  return speed / 3.6;
 }
 
-String getWeatherIcon()
+int getWeatherCode()
 {
-  return weatherIcon;
+  return weatherCode;
+}
+
+bool getIsDay()
+{
+  return isDay;
 }

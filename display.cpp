@@ -36,34 +36,30 @@ void drawBitmapTransparent(int x, int y, const uint16_t *bitmap, int w, int h)
   }
 }
 
-const uint16_t *getWeatherIcon(String icon)
+const uint16_t *getWeatherIcon(int code, bool isDay)
 {
-  if (icon == "01d")
-    return weather_clear;
-  if (icon == "01n")
-    return weather_clear_n;
+  if (code == 1000)
+    return isDay ? weather_clear : weather_clear_n;
 
-  if (icon == "02d")
-    return weather_few_clouds;
-  if (icon == "02n")
-    return weather_few_clouds_n;
+  if (code == 1003)
+    return isDay ? weather_few_clouds : weather_few_clouds_n;
 
-  if (icon == "03d" || icon == "03n" || icon == "04d" || icon == "04n")
+  if (code == 1006 || code == 1009)
     return weather_clouds;
 
-  if (icon == "10d" || icon == "09d")
-    return weather_rain;
-
-  if (icon == "13d" || icon == "13n")
-    return weather_snow;
-
-  if (icon == "50d")
+  if (code == 1030 || code == 1135 || code == 1147)
     return weather_fog;
 
-  if (icon == "11n")
+  if (code == 1063 || code == 1150 || code == 1153 || code == 1168 || code == 1171 || code == 1180 || code == 1183 || code == 1186 || code == 1189 || code == 1192 || code == 1195 || code == 1198 || code == 1201 || code == 1237 || code == 1240 || code == 1243 || code == 1246)
+    return weather_rain;
+
+  if (code == 1066 || code == 1069 || code == 1072 || code == 1114 || code == 1117 || code == 1204 || code == 1207 || code == 1210 || code == 1213 || code == 1216 || code == 1219 || code == 1222 || code == 1225 || code == 1249 || code == 1252 || code == 1255 || code == 1258 || code == 1261 || code == 1264)
+    return weather_snow;
+
+  if (code == 1087 || code == 1273 || code == 1276 || code == 1279 || code == 1282)
     return weather_thunderstorm;
 
-  return weather_clouds; // дефолт
+  return weather_clouds;
 }
 
 const uint16_t *getAlertIcon(bool alert)
@@ -164,8 +160,10 @@ void updateDisplay(bool hasData, bool alert)
       // очистка області
       tft.fillRect(x, y, 200, 80, ST77XX_BLACK);
 
-      String iconCode = getWeatherIcon();
-      const uint16_t *iconBitmap = getWeatherIcon(iconCode);
+      int code = getWeatherCode();
+      bool isDay = getIsDay();
+
+      const uint16_t *iconBitmap = getWeatherIcon(code, isDay);
 
       drawBitmapTransparent(x, y, iconBitmap, iconSize, iconSize);
 
@@ -199,15 +197,19 @@ void updateDisplay(bool hasData, bool alert)
       u8g2.setCursor(x + 70, y + 115);
       u8g2.print("%");
 
-      drawBitmapTransparent(120, 150, system_wind, 20, 20);
+      drawBitmapTransparent(110, 150, system_wind, 20, 20);
 
       u8g2.setFont(u8g2_font_fub20_tn);
-      u8g2.setCursor(x + 140, y + 115);
+      u8g2.setCursor(x + 130, y + 115);
       u8g2.setForegroundColor(tft.color565(150, 150, 150));
-      u8g2.print(String(speed, 1));
+
+      if (speed < 10)
+        u8g2.print(String(speed, 1));
+      else
+        u8g2.print((int)speed);
 
       u8g2.setFont(u8g2_font_10x20_t_cyrillic);
-      u8g2.setCursor(x + 190, y + 115);
+      u8g2.setCursor(x + 180, y + 115);
       u8g2.print("м/с");
     }
   }
