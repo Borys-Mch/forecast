@@ -126,8 +126,8 @@ void initDisplay()
 
   // лінії
   tft.drawLine(0, 40, tft.width(), 40, tft.color565(120, 120, 120));
-  tft.drawLine(0, 166, tft.width(), 166, tft.color565(120, 120, 120));
-  tft.drawLine(0, 169, tft.width(), 169, tft.color565(120, 120, 120));
+  tft.drawLine(0, 177, tft.width(), 177, tft.color565(120, 120, 120));
+  tft.drawLine(0, 180, tft.width(), 180, tft.color565(120, 120, 120));
 }
 
 void updateDisplay(bool hasData, bool alert)
@@ -137,6 +137,11 @@ void updateDisplay(bool hasData, bool alert)
   static float lastFeels = -1000;
   static float lastHumidity = -1000;
   static float lastWindSpeed = -1000;
+  static int lastCO2 = -1;
+  static String lastPM25Text = "";
+  static String lastPM10Text = "";
+  static String lastTempText = "";
+  static String lastHumText = "";
 
   const float co2 = getCO2();
   const float pm2_5 = getPM25();
@@ -261,71 +266,170 @@ void updateDisplay(bool hasData, bool alert)
       u8g2.setCursor(x + 180, y + 105);
       u8g2.print("м/с");
     }
+  }
 
-    if (getTempLocal())
+  String tempText = "";
+  if (temp_scd > 0)
+  {
+    tempText = String((int)temp_scd);
+  }
+
+  if (tempText != lastTempText)
+  {
+    tft.fillRect(10, 190, 110, 60, ST77XX_BLACK);
+
+    if (tempText.length() > 0)
     {
       u8g2.setFont(u8g2_font_fub42_tn);
-      u8g2.setCursor(15, 220);
+      u8g2.setCursor(20, 240);
       u8g2.setForegroundColor(tft.color565(86, 174, 194));
-      u8g2.print((int)temp_scd);
+      u8g2.print(tempText);
 
       u8g2.setFont(u8g2_font_10x20_t_cyrillic);
-      u8g2.setCursor(75, 180);
+      u8g2.setCursor(90, 200);
       u8g2.print("o");
     }
 
-    if (getHumidityLocal())
+    lastTempText = tempText;
+  }
+
+  String humText = "";
+  if (hum_scd > 0)
+  {
+    humText = String((int)hum_scd);
+  }
+
+  if (humText != lastHumText)
+  {
+    tft.fillRect(130, 190, 90, 60, ST77XX_BLACK);
+
+    if (humText.length() > 0)
     {
       u8g2.setFont(u8g2_font_fub42_tn);
-      u8g2.setCursor(100, 220);
+      u8g2.setCursor(140, 240);
       u8g2.setForegroundColor(tft.color565(86, 174, 194));
-      u8g2.print((int)hum_scd);
+      u8g2.print(humText);
 
       u8g2.setFont(u8g2_font_10x20_t_cyrillic);
-      u8g2.setCursor(160, 220);
+      u8g2.setCursor(210, 240);
       u8g2.print("%");
     }
 
-    tft.drawLine(10, 230, 230, 230, tft.color565(120, 120, 120));
+    lastHumText = humText;
+  }
 
-    u8g2.setFont(u8g2_font_10x20_t_cyrillic);
-    u8g2.setCursor(30, 260);
-    u8g2.print("СО2");
+  tft.drawLine(10, 250, 230, 250, tft.color565(120, 120, 120));
 
-    if (getCO2())
+  u8g2.setFont(u8g2_font_10x20_t_cyrillic);
+  u8g2.setForegroundColor(tft.color565(120, 120, 120));
+  u8g2.setCursor(30, 275);
+  u8g2.print("СО2");
+
+  const int co2Value = (int)co2;
+  if (co2Value != lastCO2)
+  {
+    tft.fillRect(10, 287, 90, 28, ST77XX_BLACK);
+
+    if (co2Value > 0)
     {
       u8g2.setFont(u8g2_font_fub20_tn);
-      u8g2.setCursor(15, 300);
       u8g2.setForegroundColor(tft.color565(150, 150, 150));
-      u8g2.print((int)co2);
+
+      if (co2Value >= 1000)
+        u8g2.setCursor(15, 310);
+      else
+        u8g2.setCursor(20, 310);
+
+      if (co2Value >= 2000)
+        u8g2.setForegroundColor(tft.color565(145, 36, 255));
+      else if (co2Value >= 1400)
+        u8g2.setForegroundColor(tft.color565(254, 32, 32));
+      else if (co2Value >= 800)
+        u8g2.setForegroundColor(tft.color565(255, 235, 107));
+      else
+        u8g2.setForegroundColor(tft.color565(122, 225, 144));
+
+      u8g2.print(co2Value);
     }
 
-    tft.drawLine(100, 230, 100, 310, tft.color565(120, 120, 120));
+    lastCO2 = co2Value;
+  }
 
-    u8g2.setFont(u8g2_font_10x20_t_cyrillic);
-    u8g2.setCursor(110, 260);
-    u8g2.print("РМ2.5");
+  tft.drawLine(100, 250, 100, 310, tft.color565(120, 120, 120));
 
-    if (getPM25())
+  u8g2.setFont(u8g2_font_10x20_t_cyrillic);
+  u8g2.setForegroundColor(tft.color565(120, 120, 120));
+  u8g2.setCursor(110, 275);
+  u8g2.print("РМ2.5");
+
+  String pm25Text = "";
+  if (pm2_5 > 0)
+  {
+    pm25Text = pm2_5 < 10 ? String(pm2_5, 1) : String((int)pm2_5);
+  }
+
+  if (pm25Text != lastPM25Text)
+  {
+    tft.fillRect(105, 287, 60, 28, ST77XX_BLACK);
+
+    if (pm25Text.length() > 0)
     {
       u8g2.setFont(u8g2_font_fub20_tn);
-      u8g2.setCursor(110, 300);
-      u8g2.setForegroundColor(tft.color565(150, 150, 150));
-      u8g2.print((int)pm2_5);
+      u8g2.setCursor(110, 310);
+
+      if (pm2_5 >= 75)
+        u8g2.setForegroundColor(tft.color565(145, 36, 255));
+      else if (pm2_5 >= 35)
+        u8g2.setForegroundColor(tft.color565(254, 32, 32));
+      else if (pm2_5 >= 15)
+        u8g2.setForegroundColor(tft.color565(255, 130, 46));
+      else if (pm2_5 >= 5)
+        u8g2.setForegroundColor(tft.color565(255, 235, 107));
+      else
+        u8g2.setForegroundColor(tft.color565(122, 225, 144));
+
+      u8g2.print(pm25Text);
     }
 
-    tft.drawLine(170, 230, 170, 310, tft.color565(120, 120, 120));
+    lastPM25Text = pm25Text;
+  }
 
-    u8g2.setFont(u8g2_font_10x20_t_cyrillic);
-    u8g2.setCursor(180, 260);
-    u8g2.print("РМ10");
+  tft.drawLine(170, 250, 170, 310, tft.color565(120, 120, 120));
 
-    if (getPM10())
+  u8g2.setFont(u8g2_font_10x20_t_cyrillic);
+  u8g2.setForegroundColor(tft.color565(120, 120, 120));
+  u8g2.setCursor(180, 275);
+  u8g2.print("РМ10");
+
+  String pm10Text = "";
+  if (pm10 > 0)
+  {
+    pm10Text = pm10 < 10 ? String(pm10, 1) : String((int)pm10);
+  }
+
+  if (pm10Text != lastPM10Text)
+  {
+    tft.fillRect(175, 287, 60, 28, ST77XX_BLACK);
+
+    if (pm10Text.length() > 0)
     {
       u8g2.setFont(u8g2_font_fub20_tn);
-      u8g2.setCursor(180, 300);
-      u8g2.setForegroundColor(tft.color565(150, 150, 150));
-      u8g2.print((int)pm10);
+      u8g2.setCursor(180, 310);
+
+      if (pm10 >= 200)
+        u8g2.setForegroundColor(tft.color565(145, 36, 255));
+      else if (pm10 >= 100)
+        u8g2.setForegroundColor(tft.color565(254, 32, 32));
+      else if (pm10 >= 50)
+        u8g2.setForegroundColor(tft.color565(255, 130, 46));
+      else if (pm10 >= 20)
+        u8g2.setForegroundColor(tft.color565(255, 235, 107));
+      else
+        u8g2.setForegroundColor(tft.color565(122, 225, 144));
+
+      u8g2.print(pm10Text);
     }
+
+    lastPM10Text = pm10Text;
   }
 }
