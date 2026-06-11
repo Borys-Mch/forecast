@@ -5,6 +5,7 @@
 #include "alerts.h"
 #include "display.h"
 #include "weather.h"
+#include "sensors.h"
 
 #include <Adafruit_NeoPixel.h>
 
@@ -36,6 +37,7 @@ void setup()
   Serial.println("\nWiFi OK");
 
   initDisplay();
+  initSensors();
 
   setupWeb(config);
 }
@@ -79,6 +81,8 @@ void loop()
     lastWeatherUpdate = millis();
     updateWeather(config.apiKey, config.lat, config.lon);
   }
+
+  updateSensors();
 
   updateDisplay(hasData, getAlertState());
 }

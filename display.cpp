@@ -4,10 +4,12 @@
 #include <U8g2_for_Adafruit_GFX.h>
 #include <SPI.h>
 #include <WiFi.h>
+#include <math.h>
 #include "weather.h"
 #include "icons.h"
 #include "systemicons.h"
 #include "alerts.h"
+#include "sensors.h"
 
 // ===== ПІНИ =================================================
 #define TFT_CS 1
@@ -16,6 +18,7 @@
 #define TFT_MISO -1
 #define TFT_MOSI 6
 #define TFT_SCK 7
+#define TFT_BL 23
 
 U8G2_FOR_ADAFRUIT_GFX u8g2;
 Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_RST);
@@ -82,8 +85,37 @@ const uint16_t *getWiFiIcon()
     return system_wifi_1; // слабкий
 }
 
+float calculateFeelsLike(float t, float h, float v)
+{
+  // ❄️ холод + вітер (wind chill)
+  if (t <= 10 && v > 1.3)
+  {
+    return 13.12 + 0.6215 * t - 11.37 * pow(v, 0.16) + 0.3965 * t * pow(v, 0.16);
+  }
+
+  // 🔥 спека + вологість (heat index)
+  if (t >= 24)
+  {
+    return -8.784695 + 1.61139411 * t + 2.338549 * h - 0.14611605 * t * h - 0.012308094 * t * t - 0.016424828 * h * h + 0.002211732 * t * t * h + 0.00072546 * t * h * h - 0.000003582 * t * t * h * h;
+  }
+
+  // 🌤 комфортна зона (твій кейс)
+  float feels = t;
+
+  // вітер
+  feels -= v * 0.6;
+
+  // вологість
+  feels += (h - 50) * 0.04;
+
+  return feels;
+}
+
 void initDisplay()
 {
+  pinMode(TFT_BL, OUTPUT);
+  digitalWrite(TFT_BL, HIGH);
+
   SPI.begin(TFT_SCK, TFT_MISO, TFT_MOSI, TFT_CS);
   tft.init(240, 320);
   tft.setRotation(2); // Вертикально піни зверху
@@ -94,7 +126,8 @@ void initDisplay()
 
   // лінії
   tft.drawLine(0, 40, tft.width(), 40, tft.color565(120, 120, 120));
-  tft.drawLine(0, 180, tft.width(), 180, tft.color565(120, 120, 120));
+  tft.drawLine(0, 166, tft.width(), 166, tft.color565(120, 120, 120));
+  tft.drawLine(0, 169, tft.width(), 169, tft.color565(120, 120, 120));
 }
 
 void updateDisplay(bool hasData, bool alert)
@@ -104,6 +137,12 @@ void updateDisplay(bool hasData, bool alert)
   static float lastFeels = -1000;
   static float lastHumidity = -1000;
   static float lastWindSpeed = -1000;
+
+  const float co2 = getCO2();
+  const float pm2_5 = getPM25();
+  const float pm10 = getPM10();
+  const float temp_scd = getTempLocal();
+  const float hum_scd = getHumidityLocal();
 
   String text;
   const uint16_t *iconAlert = getAlertIcon(alert);
@@ -141,24 +180,30 @@ void updateDisplay(bool hasData, bool alert)
   if (hasWeather())
   {
     float temp = getTemperature();
-    float feels_like = getTemperatureFeels();
     float humidity = getHumidity();
     float speed = getWindSpeed();
+    float feels_like = calculateFeelsLike(
+        getTemperature(),
+        getHumidity(),
+        getWindSpeed());
 
-    if (abs(temp - lastTemp) > 0.1)
+    if (abs(temp - lastTemp) > 0.1 ||
+        abs(feels_like - lastFeels) > 0.1 ||
+        abs(humidity - lastHumidity) > 1 ||
+        abs(speed - lastWindSpeed) > 0.1)
     {
       lastTemp = temp;
       lastFeels = feels_like;
       lastHumidity = humidity;
       lastWindSpeed = speed;
 
-      int iconSize = 67;
+      int iconSize = 60;
 
-      int x = tft.width() - 230; // 🔥 вся група (іконка + текст)
+      int x = tft.width() - 225; // вся група (іконка + текст)
       int y = 55;
 
       // очистка області
-      tft.fillRect(x, y, 200, 80, ST77XX_BLACK);
+      tft.fillRect(x, y, 230, 110, ST77XX_BLACK);
 
       int code = getWeatherCode();
       bool isDay = getIsDay();
@@ -168,39 +213,43 @@ void updateDisplay(bool hasData, bool alert)
       drawBitmapTransparent(x, y, iconBitmap, iconSize, iconSize);
 
       u8g2.setFont(u8g2_font_fub42_tn);
-      u8g2.setCursor(x + iconSize + 20, y + 55); // Y = baseline!
-
+      u8g2.setCursor(x + iconSize + 15, y + 51); // Y = baseline!
       u8g2.setForegroundColor(tft.color565(86, 174, 194));
       u8g2.print((int)temp);
 
       u8g2.setFont(u8g2_font_10x20_t_cyrillic);
-      u8g2.setCursor(x + iconSize + 100, y + 20);
+      u8g2.setCursor(x + iconSize + 85, y + 13);
       u8g2.print("o");
 
-      tft.drawLine(200, 70, 180, 110, tft.color565(120, 120, 120));
+      tft.drawLine(190, 61, 165, 106, tft.color565(120, 120, 120));
 
       u8g2.setFont(u8g2_font_fub20_tn);
-      u8g2.setCursor(x + 190, y + 55);
+      u8g2.setCursor(x + 175, y + 51);
       u8g2.setForegroundColor(tft.color565(120, 120, 120));
       u8g2.print((int)feels_like);
 
-      tft.drawLine(10, 140, 230, 140, tft.color565(99, 99, 99));
+      u8g2.setFont(u8g2_font_10x20_t_cyrillic);
+      u8g2.setCursor(x + 205, y + 36);
+      u8g2.setForegroundColor(tft.color565(120, 120, 120));
+      u8g2.print("o");
 
-      drawBitmapTransparent(15, 150, system_humidity, 20, 20);
+      tft.drawLine(10, y + 75, 230, y + 75, tft.color565(99, 99, 99));
+
+      drawBitmapTransparent(15, y + 85, system_humidity, 20, 20);
 
       u8g2.setFont(u8g2_font_fub20_tn);
-      u8g2.setCursor(x + 35, y + 115);
+      u8g2.setCursor(x + 35, y + 105);
       u8g2.setForegroundColor(tft.color565(150, 150, 150));
       u8g2.print((int)humidity);
 
       u8g2.setFont(u8g2_font_10x20_t_cyrillic);
-      u8g2.setCursor(x + 70, y + 115);
+      u8g2.setCursor(x + 70, y + 105);
       u8g2.print("%");
 
-      drawBitmapTransparent(110, 150, system_wind, 20, 20);
+      drawBitmapTransparent(110, y + 85, system_wind, 20, 20);
 
       u8g2.setFont(u8g2_font_fub20_tn);
-      u8g2.setCursor(x + 130, y + 115);
+      u8g2.setCursor(x + 130, y + 105);
       u8g2.setForegroundColor(tft.color565(150, 150, 150));
 
       if (speed < 10)
@@ -209,8 +258,74 @@ void updateDisplay(bool hasData, bool alert)
         u8g2.print((int)speed);
 
       u8g2.setFont(u8g2_font_10x20_t_cyrillic);
-      u8g2.setCursor(x + 180, y + 115);
+      u8g2.setCursor(x + 180, y + 105);
       u8g2.print("м/с");
+    }
+
+    if (getTempLocal())
+    {
+      u8g2.setFont(u8g2_font_fub42_tn);
+      u8g2.setCursor(15, 220);
+      u8g2.setForegroundColor(tft.color565(86, 174, 194));
+      u8g2.print((int)temp_scd);
+
+      u8g2.setFont(u8g2_font_10x20_t_cyrillic);
+      u8g2.setCursor(75, 180);
+      u8g2.print("o");
+    }
+
+    if (getHumidityLocal())
+    {
+      u8g2.setFont(u8g2_font_fub42_tn);
+      u8g2.setCursor(100, 220);
+      u8g2.setForegroundColor(tft.color565(86, 174, 194));
+      u8g2.print((int)hum_scd);
+
+      u8g2.setFont(u8g2_font_10x20_t_cyrillic);
+      u8g2.setCursor(160, 220);
+      u8g2.print("%");
+    }
+
+    tft.drawLine(10, 230, 230, 230, tft.color565(120, 120, 120));
+
+    u8g2.setFont(u8g2_font_10x20_t_cyrillic);
+    u8g2.setCursor(30, 260);
+    u8g2.print("СО2");
+
+    if (getCO2())
+    {
+      u8g2.setFont(u8g2_font_fub20_tn);
+      u8g2.setCursor(15, 300);
+      u8g2.setForegroundColor(tft.color565(150, 150, 150));
+      u8g2.print((int)co2);
+    }
+
+    tft.drawLine(100, 230, 100, 310, tft.color565(120, 120, 120));
+
+    u8g2.setFont(u8g2_font_10x20_t_cyrillic);
+    u8g2.setCursor(110, 260);
+    u8g2.print("РМ2.5");
+
+    if (getPM25())
+    {
+      u8g2.setFont(u8g2_font_fub20_tn);
+      u8g2.setCursor(110, 300);
+      u8g2.setForegroundColor(tft.color565(150, 150, 150));
+      u8g2.print((int)pm2_5);
+    }
+
+    tft.drawLine(170, 230, 170, 310, tft.color565(120, 120, 120));
+
+    u8g2.setFont(u8g2_font_10x20_t_cyrillic);
+    u8g2.setCursor(180, 260);
+    u8g2.print("РМ10");
+
+    if (getPM10())
+    {
+      u8g2.setFont(u8g2_font_fub20_tn);
+      u8g2.setCursor(180, 300);
+      u8g2.setForegroundColor(tft.color565(150, 150, 150));
+      u8g2.print((int)pm10);
     }
   }
 }
