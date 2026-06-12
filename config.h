@@ -7,6 +7,8 @@ struct AppConfig
   float lat;
   float lon;
   String region;
+  float tempOffset = 0;
+  float humOffset = 0;
 };
 
 void loadConfig(AppConfig &cfg);

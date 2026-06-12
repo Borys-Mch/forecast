@@ -39,6 +39,8 @@ void setup()
   initDisplay();
   initSensors();
 
+  setTempOffset(config.tempOffset);
+  setHumidityOffset(config.humOffset);
   setupWeb(config);
 }
 

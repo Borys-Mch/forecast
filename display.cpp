@@ -202,10 +202,10 @@ void updateDisplay(bool hasData, bool alert)
       lastHumidity = humidity;
       lastWindSpeed = speed;
 
-      int iconSize = 60;
+      int iconSize = 55;
 
       int x = tft.width() - 225; // вся група (іконка + текст)
-      int y = 55;
+      int y = 57;
 
       // очистка області
       tft.fillRect(x, y, 230, 110, ST77XX_BLACK);
@@ -218,27 +218,27 @@ void updateDisplay(bool hasData, bool alert)
       drawBitmapTransparent(x, y, iconBitmap, iconSize, iconSize);
 
       u8g2.setFont(u8g2_font_fub42_tn);
-      u8g2.setCursor(x + iconSize + 15, y + 51); // Y = baseline!
+      u8g2.setCursor(x + iconSize + 15, y + 49); // Y = baseline!
       u8g2.setForegroundColor(tft.color565(86, 174, 194));
       u8g2.print((int)temp);
 
       u8g2.setFont(u8g2_font_10x20_t_cyrillic);
-      u8g2.setCursor(x + iconSize + 85, y + 13);
+      u8g2.setCursor(x + iconSize + 85, y + 11);
       u8g2.print("o");
 
-      tft.drawLine(190, 61, 165, 106, tft.color565(120, 120, 120));
+      tft.drawLine(190, 59, 165, 104, tft.color565(120, 120, 120));
 
       u8g2.setFont(u8g2_font_fub20_tn);
-      u8g2.setCursor(x + 175, y + 51);
+      u8g2.setCursor(x + 175, y + 49);
       u8g2.setForegroundColor(tft.color565(120, 120, 120));
       u8g2.print((int)feels_like);
 
       u8g2.setFont(u8g2_font_10x20_t_cyrillic);
-      u8g2.setCursor(x + 205, y + 36);
+      u8g2.setCursor(x + 205, y + 34);
       u8g2.setForegroundColor(tft.color565(120, 120, 120));
       u8g2.print("o");
 
-      tft.drawLine(10, y + 75, 230, y + 75, tft.color565(99, 99, 99));
+      tft.drawLine(10, y + 72, 230, y + 72, tft.color565(99, 99, 99));
 
       drawBitmapTransparent(15, y + 85, system_humidity, 20, 20);
 

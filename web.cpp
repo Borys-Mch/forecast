@@ -2,6 +2,7 @@
 #include <WebServer.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include "sensors.h"
 
 static WebServer server(80);
 static AppConfig *config;
@@ -88,6 +89,14 @@ String htmlPage()
   html += "Region:<br>";
   html += "<select name='region'>" + options + "</select><br><br>";
 
+  html += "<h3>Calibration</h3>";
+
+  html += "Temp offset:<br>";
+  html += "<input name='to' value='" + String(config->tempOffset, 1) + "'><br>";
+
+  html += "Humidity offset:<br>";
+  html += "<input name='ho' value='" + String(config->humOffset, 1) + "'><br><br>";
+
   html += "<input type='submit' value='Save'>";
   html += "</form>";
 
@@ -108,7 +117,16 @@ void handleSave()
   config->lon = server.arg("lon").toFloat();
   config->region = server.arg("region");
 
+  if (server.hasArg("to"))
+    config->tempOffset = server.arg("to").toFloat();
+
+  if (server.hasArg("ho"))
+    config->humOffset = server.arg("ho").toFloat();
+
   saveConfig(*config);
+
+  setTempOffset(config->tempOffset);
+  setHumidityOffset(config->humOffset);
 
   cachedOptions = "";
   lastFetch = 0;

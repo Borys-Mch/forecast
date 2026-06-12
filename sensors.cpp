@@ -15,6 +15,8 @@ static float temp_scd = 0;
 static float hum_scd = 0;
 static float pm2_5 = 0;
 static float pm10 = 0;
+static float temp_offset = 0;
+static float hum_offset = 0;
 
 static void initSCD30();
 static void initSPS30();
@@ -98,8 +100,18 @@ void updateSensors()
   readSPS30();
 }
 
+void setTempOffset(float val)
+{
+  temp_offset = val;
+}
+
+void setHumidityOffset(float val)
+{
+  hum_offset = val;
+}
+
 float getCO2() { return co2; }
 float getPM25() { return pm2_5; }
 float getPM10() { return pm10; }
-float getTempLocal() { return temp_scd; }
-float getHumidityLocal() { return hum_scd; }
+float getTempLocal() { return temp_scd + temp_offset; }
+float getHumidityLocal() { return hum_scd + hum_offset; }
