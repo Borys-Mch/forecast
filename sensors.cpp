@@ -68,26 +68,21 @@ static void readSCD30()
 static void readSPS30()
 {
   uint16_t dataReadyFlag = 0;
+  int16_t err = sps30.readDataReadyFlag(dataReadyFlag);
 
-  if (sps30.readDataReadyFlag(dataReadyFlag) != 0 || dataReadyFlag == 0)
-  {
+  if (err != 0 || dataReadyFlag == 0)
     return;
-  }
 
-  float mc1p0 = 0;
-  float mc2p5 = 0;
-  float mc4p0 = 0;
-  float mc10p0 = 0;
-  float nc0p5 = 0;
-  float nc1p0 = 0;
-  float nc2p5 = 0;
-  float nc4p0 = 0;
-  float nc10p0 = 0;
+  float mc1p0 = 0, mc2p5 = 0, mc4p0 = 0, mc10p0 = 0;
+  float nc0p5 = 0, nc1p0 = 0, nc2p5 = 0, nc4p0 = 0, nc10p0 = 0;
   float typicalParticleSize = 0;
 
-  if (sps30.readMeasurementValuesFloat(mc1p0, mc2p5, mc4p0, mc10p0, nc0p5,
-                                       nc1p0, nc2p5, nc4p0, nc10p0,
-                                       typicalParticleSize) == 0)
+  int16_t readErr = sps30.readMeasurementValuesFloat(
+      mc1p0, mc2p5, mc4p0, mc10p0,
+      nc0p5, nc1p0, nc2p5, nc4p0, nc10p0,
+      typicalParticleSize);
+
+  if (readErr == 0)
   {
     pm2_5 = mc2p5;
     pm10 = mc10p0;

@@ -16,16 +16,20 @@ Adafruit_NeoPixel led(1, 8, NEO_GRB + NEO_KHZ800);
 
 unsigned long lastAlertUpdate = 0;
 unsigned long lastWeatherUpdate = 0;
+unsigned long lastDisplayUpdate = 0;
 unsigned long lastBlink = 0;
 bool ledState = false;
 
 void setup()
 {
   Serial.begin(115200);
+  delay(1000);
+
+  Serial.println("BOOT OK");
+
   led.begin();
-
-  loadConfig(config);
-
+  WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false);
   WiFi.begin(ssid, password);
 
   while (WiFi.status() != WL_CONNECTED)
@@ -34,7 +38,13 @@ void setup()
     Serial.print(".");
   }
 
+  loadConfig(config);
+
+  setTempOffset(config.tempOffset);
+  setHumidityOffset(config.humOffset);
+
   Serial.println("\nWiFi OK");
+  updateWeather(config.apiKey, config.lat, config.lon);
 
   initDisplay();
   initSensors();
@@ -78,7 +88,7 @@ void loop()
   }
 
   // погода
-  if (millis() - lastWeatherUpdate > 100000)
+  if (millis() - lastWeatherUpdate > 300000)
   {
     lastWeatherUpdate = millis();
     updateWeather(config.apiKey, config.lat, config.lon);
@@ -86,5 +96,20 @@ void loop()
 
   updateSensors();
 
-  updateDisplay(hasData, getAlertState());
+  if (millis() - lastDisplayUpdate > 250)
+  {
+    lastDisplayUpdate = millis();
+    updateDisplay(hasData, getAlertState());
+  }
+
+  static unsigned long lastDebug = 0;
+
+  if (millis() - lastDebug > 10000)
+  {
+    Serial.print("Heap: ");
+    Serial.println(ESP.getFreeHeap());
+    lastDebug = millis();
+  }
+
+  delay(1);
 }

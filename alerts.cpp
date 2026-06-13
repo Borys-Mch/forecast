@@ -43,11 +43,31 @@ bool isAlertNow(String region)
   if (!fetchAlertsJson(payload))
     return false;
 
-  StaticJsonDocument<12288> doc;
-  DeserializationError err = deserializeJson(doc, payload);
+  StaticJsonDocument<1024> doc;
+  StaticJsonDocument<256> filter;
+
+  // динамічно підставляємо область
+  filter["states"][region]["alertnow"] = true;
+
+  DeserializationError err = deserializeJson(
+      doc,
+      payload.c_str(),
+      DeserializationOption::Filter(filter));
 
   if (err)
     return false;
+
+  Serial.print("Alerts JSON: ");
+  Serial.println(doc.memoryUsage());
+
+  Serial.print("Capacity: ");
+  Serial.println(doc.capacity());
+
+  Serial.print("Usage: ");
+  Serial.println(doc.memoryUsage());
+
+  Serial.print("Payload length: ");
+  Serial.println(payload.length());
 
   JsonObject states = doc["states"];
 

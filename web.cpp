@@ -16,7 +16,7 @@ String getRegionsOptions(String selected)
   http.begin("https://ubilling.net.ua/aerialalerts/");
 
   int code = http.GET();
-  if (code != 200)
+  if (code <= 0)
   {
     http.end();
     return "<option>Error loading</option>";
