@@ -9,6 +9,10 @@ struct AppConfig
   String region;
   float tempOffset = 0;
   float humOffset = 0;
+  String mqttHost;
+  int mqttPort;
+  String mqttUser;
+  String mqttPass;
 };
 
 void loadConfig(AppConfig &cfg);

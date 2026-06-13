@@ -6,6 +6,7 @@
 #include "display.h"
 #include "weather.h"
 #include "sensors.h"
+#include "mqtt.h"
 
 #include <Adafruit_NeoPixel.h>
 
@@ -24,8 +25,6 @@ void setup()
 {
   Serial.begin(115200);
   delay(1000);
-
-  Serial.println("BOOT OK");
 
   led.begin();
   WiFi.mode(WIFI_STA);
@@ -52,6 +51,7 @@ void setup()
   setTempOffset(config.tempOffset);
   setHumidityOffset(config.humOffset);
   setupWeb(config);
+  mqttInit();
 }
 
 void loop()
@@ -102,14 +102,7 @@ void loop()
     updateDisplay(hasData, getAlertState());
   }
 
-  static unsigned long lastDebug = 0;
-
-  if (millis() - lastDebug > 10000)
-  {
-    Serial.print("Heap: ");
-    Serial.println(ESP.getFreeHeap());
-    lastDebug = millis();
-  }
+  mqttLoop();
 
   delay(1);
 }

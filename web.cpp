@@ -1,107 +1,40 @@
 #include "web.h"
 #include <WebServer.h>
-#include <HTTPClient.h>
-#include <ArduinoJson.h>
 #include "sensors.h"
+#include "mqtt.h"
 
 static WebServer server(80);
-static AppConfig *config;
-
-String cachedOptions = "";
-unsigned long lastFetch = 0;
-
-String getRegionsOptions(String selected)
-{
-  HTTPClient http;
-  http.begin("https://ubilling.net.ua/aerialalerts/");
-
-  int code = http.GET();
-  if (code <= 0)
-  {
-    http.end();
-    return "<option>Error loading</option>";
-  }
-
-  String payload = http.getString();
-  http.end();
-
-  StaticJsonDocument<12288> doc;
-  DeserializationError err = deserializeJson(doc, payload);
-
-  if (err)
-  {
-    return "<option>JSON error</option>";
-  }
-
-  String options = "";
-
-  JsonObject states = doc["states"];
-
-  for (JsonPair kv : states)
-  {
-    String name = kv.key().c_str();
-
-    options += "<option value='" + name + "'";
-
-    if (name == selected)
-    {
-      options += " selected";
-    }
-
-    options += ">" + name + "</option>";
-  }
-
-  return options;
-}
-
-String getRegionsOptionsCached(String selected)
-{
-  if (millis() - lastFetch > 600000 || cachedOptions == "") // 10 хв
-  {
-    cachedOptions = getRegionsOptions(selected);
-    lastFetch = millis();
-  }
-
-  return cachedOptions;
-}
+static AppConfig *cfgPtr;
 
 String htmlPage()
 {
-  String options = getRegionsOptionsCached(config->region);
-  String status = cachedOptions.indexOf("Error") != -1 ? "API ERROR" : "OK";
-
   String html = "<html><head><meta charset='UTF-8'></head><body>";
   html += "<h2>Forecast Lab Config</h2>";
-
-  html += "<p>Status: " + status + "</p>";
-
   html += "<form action='/save'>";
-
   html += "API Key:<br>";
-  html += "<input name='api' value='" + config->apiKey + "'><br>";
-
+  html += "<input name='api' type='password' value='" + cfgPtr->apiKey + "'><br>";
   html += "Lat:<br>";
-  html += "<input name='lat' value='" + String(config->lat, 6) + "'><br>";
-
+  html += "<input name='lat' value='" + String(cfgPtr->lat, 6) + "'><br>";
   html += "Lon:<br>";
-  html += "<input name='lon' value='" + String(config->lon, 6) + "'><br>";
-
+  html += "<input name='lon' value='" + String(cfgPtr->lon, 6) + "'><br>";
   html += "Region:<br>";
-  html += "<select name='region'>" + options + "</select><br><br>";
-
+  html += "<input name='region' value='" + cfgPtr->region + "'><br><br>";
   html += "<h3>Calibration</h3>";
-
   html += "Temp offset:<br>";
-  html += "<input name='to' value='" + String(config->tempOffset, 1) + "'><br>";
-
+  html += "<input name='to' value='" + String(cfgPtr->tempOffset, 1) + "'><br>";
   html += "Humidity offset:<br>";
-  html += "<input name='ho' value='" + String(config->humOffset, 1) + "'><br><br>";
-
+  html += "<input name='ho' value='" + String(cfgPtr->humOffset, 1) + "'><br><br>";
+  html += "<h3>MQTT</h3>";
+  html += "Host:<br>";
+  html += "<input name='mqtt_host' value='" + cfgPtr->mqttHost + "'><br>";
+  html += "Port:<br>";
+  html += "<input name='mqtt_port' value='" + String(cfgPtr->mqttPort) + "'><br>";
+  html += "User:<br>";
+  html += "<input name='mqtt_user' value='" + cfgPtr->mqttUser + "'><br>";
+  html += "Password:<br>";
+  html += "<input name='mqtt_pass' value='" + cfgPtr->mqttPass + "'><br>";
   html += "<input type='submit' value='Save'>";
-  html += "</form>";
-
-  html += "</body></html>";
-
+  html += "</form></body></html>";
   return html;
 }
 
@@ -112,24 +45,32 @@ void handleRoot()
 
 void handleSave()
 {
-  config->apiKey = server.arg("api");
-  config->lat = server.arg("lat").toFloat();
-  config->lon = server.arg("lon").toFloat();
-  config->region = server.arg("region");
+  cfgPtr->apiKey = server.arg("api");
+  cfgPtr->lat = server.arg("lat").toFloat();
+  cfgPtr->lon = server.arg("lon").toFloat();
+  cfgPtr->region = server.arg("region");
+
+  cfgPtr->mqttHost = server.arg("mqtt_host");
+  cfgPtr->mqttHost.trim();
+
+  cfgPtr->mqttPort = server.arg("mqtt_port").toInt();
+  if (cfgPtr->mqttPort <= 0)
+    cfgPtr->mqttPort = 1883;
+
+  cfgPtr->mqttUser = server.arg("mqtt_user");
+  cfgPtr->mqttUser.trim();
+  cfgPtr->mqttPass = server.arg("mqtt_pass");
 
   if (server.hasArg("to"))
-    config->tempOffset = server.arg("to").toFloat();
+    cfgPtr->tempOffset = server.arg("to").toFloat();
 
   if (server.hasArg("ho"))
-    config->humOffset = server.arg("ho").toFloat();
+    cfgPtr->humOffset = server.arg("ho").toFloat();
 
-  saveConfig(*config);
-
-  setTempOffset(config->tempOffset);
-  setHumidityOffset(config->humOffset);
-
-  cachedOptions = "";
-  lastFetch = 0;
+  saveConfig(*cfgPtr);
+  setTempOffset(cfgPtr->tempOffset);
+  setHumidityOffset(cfgPtr->humOffset);
+  mqttInit();
 
   server.sendHeader("Location", "/");
   server.send(303);
@@ -137,11 +78,9 @@ void handleSave()
 
 void setupWeb(AppConfig &cfg)
 {
-  config = &cfg;
-
+  cfgPtr = &cfg;
   server.on("/", handleRoot);
   server.on("/save", handleSave);
-
   server.begin();
 }
 
