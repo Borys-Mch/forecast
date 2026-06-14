@@ -2,6 +2,7 @@
 #include <PubSubClient.h>
 #include "config.h"
 #include "sensors.h"
+#include "display.h"
 
 extern AppConfig config;
 
@@ -15,6 +16,32 @@ static const char *baseTopic = "home/forecast";
 static void topic(char *out, size_t len, const char *suffix)
 {
   snprintf(out, len, "%s/%s", baseTopic, suffix);
+}
+
+static void mqttCallback(char *topicStr, byte *payload, unsigned int length)
+{
+  char cmdTopic[64];
+  topic(cmdTopic, sizeof(cmdTopic), "brightness/set");
+
+  if (strcmp(topicStr, cmdTopic) == 0 && length > 0)
+  {
+    char buf[16];
+    memcpy(buf, payload, length);
+    buf[length] = '\0';
+
+    int brightness = atoi(buf);
+
+    config.brightness = constrain(brightness, 0, 255);
+    setBrightness(config.brightness);
+    saveConfig(config);
+
+    char out[16];
+    snprintf(out, sizeof(out), "%d", config.brightness);
+
+    char stateTopic[64];
+    topic(stateTopic, sizeof(stateTopic), "brightness");
+    client.publish(stateTopic, out, true);
+  }
 }
 
 static void publishDiscoverySensor(const char *configId,
@@ -54,11 +81,39 @@ static void publishDiscoverySensor(const char *configId,
              name, configId, stateTopic, avTopic, unit);
   }
 
-  bool ok = client.publish(cfgTopic, payload, true);
-  Serial.print("MQTT discovery ");
-  Serial.print(configId);
-  Serial.print(": ");
-  Serial.println(ok ? "OK" : "FAIL");
+  client.publish(cfgTopic, payload, true);
+}
+
+static void publishDiscoveryBrightness()
+{
+  char topic[128];
+  char payload[384];
+
+  snprintf(topic, sizeof(topic),
+           "homeassistant/number/forecast_lab/brightness/config");
+
+  snprintf(payload, sizeof(payload),
+           "{"
+           "\"name\":\"Brightness\","
+           "\"uniq_id\":\"forecast_lab_brightness\","
+           "\"cmd_t\":\"home/forecast/brightness/set\","
+           "\"stat_t\":\"home/forecast/brightness\","
+           "\"min\":0,"
+           "\"max\":255,"
+           "\"step\":1,"
+           "\"mode\":\"slider\","
+           "\"avty_t\":\"home/forecast/status\","
+           "\"pl_avail\":\"online\","
+           "\"pl_not_avail\":\"offline\","
+           "\"dev\":{"
+           "\"name\":\"Forecast Lab\","
+           "\"ids\":\"forecast_lab\","
+           "\"mf\":\"Forecast Lab\","
+           "\"mdl\":\"ESP32 Forecast Station\""
+           "}"
+           "}");
+
+  client.publish(topic, payload, true);
 }
 
 static void publishDiscoveryTemperature()
@@ -73,16 +128,27 @@ static void publishDiscoveryTemperature()
   topic(avTopic, sizeof(avTopic), "status");
 
   snprintf(payload, sizeof(payload),
-           "{\"name\":null,\"uniq_id\":\"forecast_lab_v3_temperature\",\"stat_t\":\"%s\","
-           "\"avty_t\":\"%s\",\"pl_avail\":\"online\",\"pl_not_avail\":\"offline\","
-           "\"unit_of_meas\":\"\xC2\xB0""C\",\"dev_cla\":\"temperature\",\"stat_cla\":\"measurement\","
-           "\"dev\":{\"name\":\"Forecast Lab\",\"ids\":\"forecast_lab\","
-           "\"mf\":\"Forecast Lab\",\"mdl\":\"ESP32 Forecast Station\"}}",
+           "{"
+           "\"name\":\"Temperature\","
+           "\"uniq_id\":\"forecast_lab_v3_temperature\","
+           "\"stat_t\":\"%s\","
+           "\"avty_t\":\"%s\","
+           "\"pl_avail\":\"online\","
+           "\"pl_not_avail\":\"offline\","
+           "\"unit_of_meas\":\"\xC2\xB0"
+           "C\","
+           "\"dev_cla\":\"temperature\","
+           "\"stat_cla\":\"measurement\","
+           "\"dev\":{"
+           "\"name\":\"Forecast Lab\","
+           "\"ids\":\"forecast_lab\","
+           "\"mf\":\"Forecast Lab\","
+           "\"mdl\":\"ESP32 Forecast Station\""
+           "}"
+           "}",
            stateTopic, avTopic);
 
-  bool ok = client.publish(cfgTopic, payload, true);
-  Serial.print("MQTT discovery temperature: ");
-  Serial.println(ok ? "OK" : "FAIL");
+  client.publish(cfgTopic, payload, true);
 }
 
 static void publishDiscovery()
@@ -92,6 +158,7 @@ static void publishDiscovery()
   publishDiscoverySensor("co2", "co2", "Forecast Lab CO2", "ppm", "carbon_dioxide", "measurement");
   publishDiscoverySensor("pm25", "pm25", "Forecast Lab PM2.5", "\xC2\xB5g/m\xC2\xB3", "", "");
   publishDiscoverySensor("pm10", "pm10", "Forecast Lab PM10", "\xC2\xB5g/m\xC2\xB3", "", "");
+  publishDiscoveryBrightness();
   lastDiscoveryPublish = millis();
 }
 
@@ -117,19 +184,6 @@ void mqttReconnect()
   char statusTopic[64];
   topic(statusTopic, sizeof(statusTopic), "status");
 
-  Serial.print("MQTT cfg: host=");
-  Serial.print(config.mqttHost);
-  Serial.print(" port=");
-  Serial.print(config.mqttPort);
-  Serial.print(" user=");
-  Serial.println(config.mqttUser);
-
-  Serial.print("MQTT connecting to ");
-  Serial.print(config.mqttHost);
-  Serial.print(":");
-  Serial.print(config.mqttPort);
-  Serial.print("...");
-
   bool connected;
   if (config.mqttUser.isEmpty())
   {
@@ -148,14 +202,12 @@ void mqttReconnect()
 
   if (connected)
   {
-    Serial.println("OK");
     client.publish(statusTopic, "online", true);
     publishDiscovery();
-  }
-  else
-  {
-    Serial.print("fail: ");
-    Serial.println(client.state());
+
+    char cmdTopic[64];
+    topic(cmdTopic, sizeof(cmdTopic), "brightness/set");
+    client.subscribe(cmdTopic);
   }
 }
 
@@ -164,15 +216,9 @@ void mqttInit()
   client.disconnect();
   client.setBufferSize(1024);
   client.setServer(config.mqttHost.c_str(), config.mqttPort);
+  client.setCallback(mqttCallback);
   lastPublish = 0;
   lastDiscoveryPublish = 0;
-
-  Serial.print("MQTT init host=");
-  Serial.print(config.mqttHost);
-  Serial.print(" port=");
-  Serial.print(config.mqttPort);
-  Serial.print(" user=");
-  Serial.println(config.mqttUser);
 }
 
 void mqttPublish()
@@ -201,6 +247,10 @@ void mqttPublish()
 
   topic(topicBuf, sizeof(topicBuf), "pm10");
   dtostrf(getPM10(), 1, 1, buf);
+  client.publish(topicBuf, buf, true);
+
+  topic(topicBuf, sizeof(topicBuf), "brightness");
+  snprintf(buf, sizeof(buf), "%d", config.brightness);
   client.publish(topicBuf, buf, true);
 
   topic(topicBuf, sizeof(topicBuf), "status");

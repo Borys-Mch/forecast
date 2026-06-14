@@ -20,6 +20,8 @@ void loadConfig(AppConfig &cfg)
   cfg.mqttUser = prefs.getString("m_user", "");
   cfg.mqttPass = prefs.getString("m_pass", "");
 
+  cfg.brightness = prefs.getInt("brightness", 255);
+
   prefs.end();
 }
 
@@ -39,6 +41,8 @@ void saveConfig(const AppConfig &cfg)
   prefs.putInt("m_port", cfg.mqttPort);
   prefs.putString("m_user", cfg.mqttUser);
   prefs.putString("m_pass", cfg.mqttPass);
+
+  prefs.putInt("brightness", cfg.brightness);
 
   prefs.end();
 }

@@ -57,18 +57,6 @@ bool isAlertNow(String region)
   if (err)
     return false;
 
-  Serial.print("Alerts JSON: ");
-  Serial.println(doc.memoryUsage());
-
-  Serial.print("Capacity: ");
-  Serial.println(doc.capacity());
-
-  Serial.print("Usage: ");
-  Serial.println(doc.memoryUsage());
-
-  Serial.print("Payload length: ");
-  Serial.println(payload.length());
-
   JsonObject states = doc["states"];
 
   if (!states.containsKey(region))

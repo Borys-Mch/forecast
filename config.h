@@ -13,6 +13,7 @@ struct AppConfig
   int mqttPort;
   String mqttUser;
   String mqttPass;
+  int brightness = 255;
 };
 
 void loadConfig(AppConfig &cfg);

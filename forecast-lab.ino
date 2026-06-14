@@ -38,7 +38,6 @@ void setup()
   }
 
   loadConfig(config);
-
   setTempOffset(config.tempOffset);
   setHumidityOffset(config.humOffset);
 
@@ -46,10 +45,8 @@ void setup()
   updateWeather(config.apiKey, config.lat, config.lon);
 
   initDisplay();
+  setBrightness(config.brightness);
   initSensors();
-
-  setTempOffset(config.tempOffset);
-  setHumidityOffset(config.humOffset);
   setupWeb(config);
   mqttInit();
 }

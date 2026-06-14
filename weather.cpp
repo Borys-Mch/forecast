@@ -15,14 +15,11 @@ static bool isDay = true;
 // кеш 5 хв
 bool fetchWeatherJson(String &payload, String url)
 {
-  // якщо вже є кеш і ще не пройшло 5 хв
   if (lastPayload != "" && millis() - lastUpdate < 300000)
   {
     payload = lastPayload;
     return true;
   }
-
-  Serial.println("Weather HTTP request...");
 
   HTTPClient http;
   http.begin(url);
@@ -64,8 +61,6 @@ void updateWeather(String apiKey, float lat, float lon)
 
   if (err)
   {
-    Serial.print("JSON ERROR: ");
-    Serial.println(err.c_str());
     weatherAvailable = false;
     return;
   }
@@ -74,26 +69,10 @@ void updateWeather(String apiKey, float lat, float lon)
   temperatureFeels = doc["current"]["feelslike_c"];
   humidity = doc["current"]["humidity"];
   speed = doc["current"]["wind_kph"];
-  int code = doc["current"]["condition"]["code"];
   weatherCode = doc["current"]["condition"]["code"];
   isDay = doc["current"]["is_day"] == 1;
 
   weatherAvailable = true;
-
-  Serial.println("=== WEATHER ===");
-  Serial.println(payload);
-
-  Serial.print("Weather JSON: ");
-  Serial.println(doc.memoryUsage());
-
-  Serial.print("Capacity: ");
-  Serial.println(doc.capacity());
-
-  Serial.print("Usage: ");
-  Serial.println(doc.memoryUsage());
-
-  Serial.print("Payload length: ");
-  Serial.println(payload.length());
 }
 
 bool hasWeather()
