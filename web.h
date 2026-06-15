@@ -3,3 +3,4 @@
 
 void setupWeb(AppConfig &cfg);
 void handleWeb();
+void handleCalibrate();

@@ -99,6 +99,9 @@ String htmlPage()
   html += "Humidity offset:<br>";
   html += "<input name='ho' value='" + String(cfgPtr->humOffset, 1) + "'><br><br>";
 
+  html += "<h3>CO2</h3>";
+  html += "<button onclick=\"fetch('/calibrate',{method:'POST'})\">Calibrate CO2</button>";
+
   html += "<h3>Display</h3>";
   html += "Brightness: <br>";
   html += "<input name='brightness' type='range' min='0' max='255' value='" + String(cfgPtr->brightness) + "' class='slider' oninput='this.nextElementSibling.value=this.value'><br>";
@@ -166,10 +169,17 @@ void setupWeb(AppConfig &cfg)
   cfgPtr = &cfg;
   server.on("/", handleRoot);
   server.on("/save", handleSave);
+  server.on("/calibrate", HTTP_POST, handleCalibrate);
   server.begin();
 }
 
 void handleWeb()
 {
   server.handleClient();
+}
+
+void handleCalibrate()
+{
+  calibrateCO2(415);
+  server.send(200, "text/plain", "CO2 calibrated");
 }

@@ -110,3 +110,8 @@ float getPM25() { return pm2_5; }
 float getPM10() { return pm10; }
 float getTempLocal() { return temp_scd + temp_offset; }
 float getHumidityLocal() { return hum_scd + hum_offset; }
+
+void calibrateCO2(float ppm)
+{
+  scd30.setForcedRecalibrationFactor(ppm);
+}

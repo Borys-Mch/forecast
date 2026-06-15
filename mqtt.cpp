@@ -41,6 +41,21 @@ static void mqttCallback(char *topicStr, byte *payload, unsigned int length)
     char stateTopic[64];
     topic(stateTopic, sizeof(stateTopic), "brightness");
     client.publish(stateTopic, out, true);
+
+    char calibTopic[64];
+    topic(calibTopic, sizeof(calibTopic), "co2/calibrate");
+
+    if (strcmp(topicStr, calibTopic) == 0 && length > 0)
+    {
+      char buf[16];
+      memcpy(buf, payload, length);
+      buf[length] = '\0';
+
+      int ppm = atoi(buf);
+      calibrateCO2(ppm);
+
+      Serial.println("CO2 calibrated!");
+    }
   }
 }
 
@@ -151,6 +166,29 @@ static void publishDiscoveryTemperature()
   client.publish(cfgTopic, payload, true);
 }
 
+static void publishDiscoveryCO2Calibrate()
+{
+  char topic[128];
+  char payload[256];
+
+  snprintf(topic, sizeof(topic),
+           "homeassistant/button/forecast_lab/co2_calibrate/config");
+
+  snprintf(payload, sizeof(payload),
+           "{"
+           "\"name\":\"Calibrate CO2\","
+           "\"uniq_id\":\"forecast_lab_co2_calibrate\","
+           "\"cmd_t\":\"home/forecast/co2/calibrate\","
+           "\"pl_prs\":\"415\","
+           "\"dev\":{"
+           "\"name\":\"Forecast Lab\","
+           "\"ids\":\"forecast_lab\""
+           "}"
+           "}");
+
+  client.publish(topic, payload, true);
+}
+
 static void publishDiscovery()
 {
   publishDiscoveryTemperature();
@@ -159,6 +197,7 @@ static void publishDiscovery()
   publishDiscoverySensor("pm25", "pm25", "Forecast Lab PM2.5", "\xC2\xB5g/m\xC2\xB3", "", "");
   publishDiscoverySensor("pm10", "pm10", "Forecast Lab PM10", "\xC2\xB5g/m\xC2\xB3", "", "");
   publishDiscoveryBrightness();
+  publishDiscoveryCO2Calibrate();
   lastDiscoveryPublish = millis();
 }
 
@@ -209,6 +248,9 @@ void mqttReconnect()
     topic(cmdTopic, sizeof(cmdTopic), "brightness/set");
     client.subscribe(cmdTopic);
   }
+  char calibTopic[64];
+  topic(calibTopic, sizeof(calibTopic), "co2/calibrate");
+  client.subscribe(calibTopic);
 }
 
 void mqttInit()
