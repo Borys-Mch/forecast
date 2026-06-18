@@ -1,8 +1,5 @@
 #include "sensors.h"
-
-#include <Wire.h>
-#include <SparkFun_SCD30_Arduino_Library.h>
-#include <SensirionI2cSps30.h>
+#include "config.h"
 
 #define SDA_PIN 20
 #define SCL_PIN 19

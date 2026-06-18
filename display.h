@@ -1,6 +1,16 @@
 #pragma once
-#include <Arduino.h>
+#include "config.h"
+
+enum ScreenState
+{
+  SCREEN_MAIN,
+  SCREEN_FORECAST
+};
+
+void switchScreen(ScreenState newScreen);
+ScreenState getCurrentScreen();
 
 void initDisplay();
-void updateDisplay(bool hasData, bool alert);
+void drawMainScreen(bool hasData, bool alert);
+void drawForecastScreen(bool hasData, bool alert);
 void setBrightness(int brightness);

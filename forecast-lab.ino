@@ -1,4 +1,3 @@
-#include <WiFi.h>
 #include "secrets.h"
 #include "config.h"
 #include "web.h"
@@ -21,6 +20,9 @@ unsigned long lastDisplayUpdate = 0;
 unsigned long lastBlink = 0;
 bool ledState = false;
 
+unsigned long forecastStart = 0;
+static const unsigned long FORECAST_TIMEOUT = 7000;
+
 void setup()
 {
   Serial.begin(115200);
@@ -42,6 +44,8 @@ void setup()
   setHumidityOffset(config.humOffset);
 
   Serial.println("\nWiFi OK");
+
+  pinMode(BTN_PIN, INPUT_PULLUP);
   updateWeather(config.apiKey, config.lat, config.lon);
 
   initDisplay();
@@ -55,7 +59,34 @@ void loop()
 {
   handleWeb();
 
-  // тривога
+  // ── кнопка ──
+  static bool btnWasPressed = false;
+  static unsigned long btnPressTime = 0;
+  bool btnNow = (digitalRead(BTN_PIN) == LOW);
+
+  if (btnNow && !btnWasPressed && millis() - btnPressTime > 200)
+  {
+    btnPressTime = millis();
+    if (getCurrentScreen() != SCREEN_FORECAST)
+    {
+      forecastStart = millis(); // ← спочатку час, потім switch
+      switchScreen(SCREEN_FORECAST);
+    }
+    else
+    {
+      switchScreen(SCREEN_MAIN);
+    }
+  }
+  btnWasPressed = btnNow;
+
+  // ── повернення на головну ──
+  if (getCurrentScreen() == SCREEN_FORECAST &&
+      millis() - forecastStart > FORECAST_TIMEOUT)
+  {
+    switchScreen(SCREEN_MAIN);
+  }
+
+  // ── тривога ──
   if (millis() - lastAlertUpdate > 10000)
   {
     lastAlertUpdate = millis();
@@ -65,16 +96,14 @@ void loop()
 
   if (getAlertState())
   {
-    if (millis() - lastBlink > 500) // кожні 500мс
+    if (millis() - lastBlink > 500)
     {
       lastBlink = millis();
       ledState = !ledState;
-
       if (ledState)
         led.setPixelColor(0, led.Color(255, 0, 0));
       else
         led.setPixelColor(0, 0);
-
       led.show();
     }
   }
@@ -84,7 +113,7 @@ void loop()
     led.show();
   }
 
-  // погода
+  // ── погода ──
   if (millis() - lastWeatherUpdate > 300000)
   {
     lastWeatherUpdate = millis();
@@ -93,13 +122,17 @@ void loop()
 
   updateSensors();
 
+  // ── малювання ──
   if (millis() - lastDisplayUpdate > 250)
   {
     lastDisplayUpdate = millis();
-    updateDisplay(hasData, getAlertState());
+
+    if (getCurrentScreen() == SCREEN_FORECAST)
+      drawForecastScreen(hasData, getAlertState());
+    else
+      drawMainScreen(hasData, getAlertState());
   }
 
   mqttLoop();
-
   delay(1);
 }

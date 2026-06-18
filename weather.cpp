@@ -1,6 +1,5 @@
 #include "weather.h"
-#include <HTTPClient.h>
-#include <ArduinoJson.h>
+#include "config.h"
 
 static bool weatherAvailable = false;
 static float temperature = 0;

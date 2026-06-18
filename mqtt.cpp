@@ -1,5 +1,3 @@
-#include <WiFi.h>
-#include <PubSubClient.h>
 #include "config.h"
 #include "sensors.h"
 #include "display.h"

@@ -1,7 +1,5 @@
 #include "web.h"
-#include <WebServer.h>
-#include <HTTPClient.h>
-#include <ArduinoJson.h>
+#include "config.h"
 #include "sensors.h"
 #include "mqtt.h"
 #include "display.h"
