@@ -21,7 +21,7 @@ unsigned long lastBlink = 0;
 bool ledState = false;
 
 unsigned long forecastStart = 0;
-static const unsigned long FORECAST_TIMEOUT = 7000;
+static const unsigned long FORECAST_TIMEOUT = 15000;
 
 void setup()
 {

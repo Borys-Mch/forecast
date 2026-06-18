@@ -10,6 +10,18 @@ static unsigned long lastUpdate = 0;
 static String lastPayload = "";
 static int weatherCode = 0;
 static bool isDay = true;
+ForecastDay forecast[3];
+String formatDate(String date)
+{
+  // формат: YYYY-MM-DD
+  if (date.length() >= 10)
+  {
+    String day = date.substring(8, 10);
+    String month = date.substring(5, 7);
+    return day + "." + month;
+  }
+  return date;
+}
 
 // кеш 5 хв
 bool fetchWeatherJson(String &payload, String url)
@@ -42,10 +54,10 @@ bool fetchWeatherJson(String &payload, String url)
 
 void updateWeather(String apiKey, float lat, float lon)
 {
-  String url = "http://api.weatherapi.com/v1/current.json?key=" +
+  String url = "http://api.weatherapi.com/v1/forecast.json?key=" +
                apiKey +
                "&q=" + String(lat, 6) + "," + String(lon, 6) +
-               "&aqi=no";
+               "&days=3&lang=uk";
 
   String payload;
 
@@ -55,7 +67,7 @@ void updateWeather(String apiKey, float lat, float lon)
     return;
   }
 
-  StaticJsonDocument<2048> doc;
+  StaticJsonDocument<6144> doc;
   DeserializationError err = deserializeJson(doc, payload.c_str());
 
   if (err)
@@ -70,6 +82,22 @@ void updateWeather(String apiKey, float lat, float lon)
   speed = doc["current"]["wind_kph"];
   weatherCode = doc["current"]["condition"]["code"];
   isDay = doc["current"]["is_day"] == 1;
+
+  JsonArray days = doc["forecast"]["forecastday"];
+
+  if (days.size() >= 3)
+  {
+    for (int i = 0; i < 3; i++)
+    {
+      forecast[i].date = formatDate(days[i]["date"].as<String>());
+      forecast[i].maxTemp = days[i]["day"]["maxtemp_c"];
+      forecast[i].minTemp = days[i]["day"]["mintemp_c"];
+      forecast[i].avghumidity = days[i]["day"]["avghumidity"];
+      forecast[i].avgvis_km = days[i]["day"]["avgvis_km"];
+      forecast[i].weatherText = days[i]["day"]["condition"]["text"].as<String>();
+      forecast[i].weatherCode = days[i]["day"]["condition"]["code"];
+    }
+  }
 
   weatherAvailable = true;
 }

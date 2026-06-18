@@ -148,6 +148,9 @@ void drawHeader(bool hasData, bool alert)
   static bool lastWifi = false; // чи був підключений
 
   String text;
+  const uint16_t *iconAlert = getAlertIcon(alert);
+  drawBitmapTransparent(5, 10, iconAlert, 20, 20);
+
   if (!hasData)
     text = "Немає даних";
   else if (alert)
@@ -156,14 +159,6 @@ void drawHeader(bool hasData, bool alert)
     text = "Безпечно";
 
   bool wifiConnected = (WiFi.status() == WL_CONNECTED);
-
-  // іконка тривоги — тільки при зміні
-  if (forceRedraw || alert != lastAlert)
-  {
-    tft.fillRect(0, 0, 30, 40, ST77XX_BLACK); // чистимо тільки зону іконки
-    drawBitmapTransparent(5, 10, getAlertIcon(alert), 20, 20);
-    lastAlert = alert;
-  }
 
   // іконка WiFi — тільки при зміні RSSI рівня
   static int lastRssiLevel = -1;
@@ -447,10 +442,72 @@ void drawForecastScreen(bool hasData, bool alert)
 {
   drawHeader(hasData, alert);
 
-  // тут малюєш forecast контент — екран вже очищено в switchScreen()
-  tft.drawLine(0, 110, tft.width(), 110, tft.color565(120, 120, 120));
-  tft.drawLine(0, 180, tft.width(), 180, tft.color565(120, 120, 120));
-  tft.drawLine(0, 250, tft.width(), 250, tft.color565(120, 120, 120));
+  int y = 41;
+
+  for (int i = 0; i < 3; i++)
+  {
+    const uint16_t *icon = getWeatherIcon(forecast[i].weatherCode, true);
+    float wind_mps = forecast[i].avgvis_km / 3.6;
+
+    u8g2.setFont(u8g2_font_10x20_t_cyrillic);
+    u8g2.setForegroundColor(tft.color565(86, 174, 194));
+    u8g2.setCursor(5, y + 19);
+    u8g2.print(forecast[i].date);
+
+    u8g2.setFont(u8g2_font_unifont_t_cyrillic);
+    u8g2.setForegroundColor(tft.color565(180, 180, 180));
+    u8g2.setCursor(70, y + 19);
+    u8g2.print(forecast[i].weatherText);
+
+    drawBitmapTransparent(5, y + 21, icon, 70, 70);
+
+    u8g2.setFont(u8g2_font_fub20_tn);
+    u8g2.setCursor(95, y + 50);
+    u8g2.setForegroundColor(tft.color565(150, 150, 150));
+    u8g2.print((int)forecast[i].minTemp);
+
+    u8g2.setFont(u8g2_font_10x20_t_cyrillic);
+    u8g2.setCursor(130, y + 35);
+    u8g2.print("o");
+
+    u8g2.setFont(u8g2_font_fub20_tn);
+    u8g2.setCursor(160, y + 50);
+    u8g2.setForegroundColor(tft.color565(150, 150, 150));
+    u8g2.print((int)forecast[i].avghumidity);
+
+    u8g2.setFont(u8g2_font_10x20_t_cyrillic);
+    u8g2.setCursor(205, y + 50);
+    u8g2.print("%");
+
+    tft.drawLine(80, y + 57, tft.width() - 5, y + 57, tft.color565(120, 120, 120));
+    tft.drawLine(150, y + 23, 150, y + 90, tft.color565(120, 120, 120));
+
+    u8g2.setFont(u8g2_font_fub20_tn);
+    u8g2.setCursor(95, y + 85);
+    u8g2.setForegroundColor(tft.color565(150, 150, 150));
+    u8g2.print((int)forecast[i].maxTemp);
+
+    u8g2.setFont(u8g2_font_10x20_t_cyrillic);
+    u8g2.setCursor(130, y + 70);
+    u8g2.print("o");
+
+    u8g2.setFont(u8g2_font_fub20_tn);
+    u8g2.setCursor(160, y + 85);
+    u8g2.setForegroundColor(tft.color565(150, 150, 150));
+    if (wind_mps < 10)
+      u8g2.print(String(wind_mps, 1));
+    else
+      u8g2.print((int)wind_mps);
+
+    u8g2.setFont(u8g2_font_10x20_t_cyrillic);
+    u8g2.setCursor(205, y + 85);
+    u8g2.print("м/с");
+
+    y += 93;
+  }
+
+  tft.drawLine(0, 134, tft.width(), 134, tft.color565(120, 120, 120));
+  tft.drawLine(0, 226, tft.width(), 226, tft.color565(120, 120, 120));
 }
 
 // ─────────────────────────────────────────────────────────────
