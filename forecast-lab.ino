@@ -7,8 +7,6 @@
 #include "sensors.h"
 #include "mqtt.h"
 
-#include <Adafruit_NeoPixel.h>
-
 bool hasData = false;
 
 AppConfig config;
@@ -31,7 +29,7 @@ void setup()
   led.begin();
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
-  WiFi.begin(ssid, password);
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
 
   while (WiFi.status() != WL_CONNECTED)
   {

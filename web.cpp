@@ -1,5 +1,6 @@
 #include "web.h"
 #include "config.h"
+#include "secrets.h"
 #include "sensors.h"
 #include "mqtt.h"
 #include "display.h"
@@ -112,6 +113,13 @@ String htmlPage()
   html += "Password:<br><input name='mqtt_pass' value='" + cfgPtr->mqttPass + "'><br><br>";
 
   html += "<input type='submit' value='Save'>";
+  html += "</form>";
+  html += "<h3>Оновлення прошивки</h3>";
+  html += "<p>Version: " + String(FW_VERSION) + "</p>";
+  html += "<form method='POST' action='/update' enctype='multipart/form-data'>";
+  html += "<input type='file' name='update'><br>";
+  html += "<input type='password' name='key' placeholder='OTA key'><br>";
+  html += "<input type='submit' value='Upload'>";
   html += "</form></body></html>";
   return html;
 }
@@ -168,6 +176,38 @@ void setupWeb(AppConfig &cfg)
   server.on("/", handleRoot);
   server.on("/save", handleSave);
   server.on("/calibrate", HTTP_POST, handleCalibrate);
+  server.on("/update", HTTP_POST, []()
+            {
+    if (!server.hasArg("key") || server.arg("key") != OTA_KEY)
+    {
+      server.send(403, "text/plain", "Forbidden");
+      return;
+    }
+
+    server.send(200, "text/plain", "OK");
+    ESP.restart(); }, []()
+            {
+    if (!server.hasArg("key") || server.arg("key") != OTA_KEY)
+    {
+      return;
+    }
+
+    HTTPUpload& upload = server.upload();
+
+    if (upload.status == UPLOAD_FILE_START)
+    {
+      Update.begin(UPDATE_SIZE_UNKNOWN);
+    }
+    else if (upload.status == UPLOAD_FILE_WRITE)
+    {
+      Update.write(upload.buf, upload.currentSize);
+    }
+    else if (upload.status == UPLOAD_FILE_END)
+    {
+      Update.end(true);
+    } });
+  server.on("/version", HTTP_GET, []()
+            { server.send(200, "text/plain", FW_VERSION); });
   server.begin();
 }
 
