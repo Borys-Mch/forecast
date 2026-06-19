@@ -97,6 +97,44 @@ const uint16_t *getWeatherIcon(int code, bool isDay)
   return weather_clouds;
 }
 
+const uint16_t getTemperatureColor(int temp)
+{
+  if (temp < -20)
+    temp = -20;
+  if (temp > 40)
+    temp = 40;
+
+  uint8_t r = 0, g = 0, b = 0;
+
+  if (temp <= 0)
+  {
+    int t = map(temp, -20, 0, 0, 255);
+    r = 0;
+    g = t;
+    b = 255;
+  }
+  else if (temp <= 20)
+  {
+    int t = map(temp, 0, 20, 0, 255);
+    r = t;
+    g = 255;
+    b = 0;
+  }
+  else
+  {
+    int t = map(temp, 20, 40, 255, 0);
+    r = 255;
+    g = t;
+    b = 0;
+  }
+
+  r = (r + 255) / 2;
+  g = (g + 255) / 2;
+  b = (b + 255) / 2;
+
+  return tft.color565(r, g, b);
+}
+
 const uint16_t *getAlertIcon(bool alert)
 {
   return alert ? system_alert : system_no_alert;
@@ -240,7 +278,7 @@ void drawMainScreen(bool hasData, bool alert)
 
       u8g2.setFont(u8g2_font_fub42_tn);
       u8g2.setCursor(x + iconSize + 15, y + 56);
-      u8g2.setForegroundColor(tft.color565(86, 174, 194));
+      u8g2.setForegroundColor(getTemperatureColor(temp));
       u8g2.print((int)temp);
 
       u8g2.setFont(u8g2_font_10x20_t_cyrillic);
@@ -301,7 +339,7 @@ void drawMainScreen(bool hasData, bool alert)
     {
       u8g2.setFont(u8g2_font_fub42_tn);
       u8g2.setCursor(20, 240);
-      u8g2.setForegroundColor(tft.color565(86, 174, 194));
+      u8g2.setForegroundColor(getTemperatureColor(tempText.toInt()));
       u8g2.print(tempText);
 
       u8g2.setFont(u8g2_font_10x20_t_cyrillic);
@@ -463,7 +501,7 @@ void drawForecastScreen(bool hasData, bool alert)
 
     u8g2.setFont(u8g2_font_fub20_tn);
     u8g2.setCursor(95, y + 50);
-    u8g2.setForegroundColor(tft.color565(150, 150, 150));
+    u8g2.setForegroundColor(getTemperatureColor(forecast[i].minTemp));
     u8g2.print((int)forecast[i].minTemp);
 
     u8g2.setFont(u8g2_font_10x20_t_cyrillic);
@@ -484,7 +522,7 @@ void drawForecastScreen(bool hasData, bool alert)
 
     u8g2.setFont(u8g2_font_fub20_tn);
     u8g2.setCursor(95, y + 85);
-    u8g2.setForegroundColor(tft.color565(150, 150, 150));
+    u8g2.setForegroundColor(getTemperatureColor(forecast[i].maxTemp));
     u8g2.print((int)forecast[i].maxTemp);
 
     u8g2.setFont(u8g2_font_10x20_t_cyrillic);
