@@ -27,7 +27,7 @@
 #define TFT_BL 23
 #define BTN_PIN 9
 
-#define FW_VERSION "1.0.4"
+#define FW_VERSION "1.0.5"
 
 struct AppConfig
 {

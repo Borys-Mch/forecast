@@ -1,12 +1,14 @@
 #include "web.h"
+#include "mqtt.h"
 #include "config.h"
 #include "secrets.h"
 #include "sensors.h"
-#include "mqtt.h"
 #include "display.h"
+#include "fallback.h"
 
 static WebServer server(80);
 static AppConfig *cfgPtr;
+extern Preferences prefs;
 
 String cachedOptions = "";
 unsigned long lastFetch = 0;
@@ -66,38 +68,55 @@ String getRegionsOptionsCached(String selected)
   return cachedOptions;
 }
 
+String getWiFiList()
+{
+  String list = "";
+
+  int n = WiFi.scanNetworks();
+
+  for (int i = 0; i < n; i++)
+  {
+    String ssid = WiFi.SSID(i);
+    list += "<option value='" + ssid + "'>" + ssid + "</option>";
+  }
+
+  return list;
+}
+
 String htmlPage()
 {
   String options = getRegionsOptionsCached(cfgPtr->region);
   String status = cachedOptions.indexOf("Error") != -1 ? "API ERROR" : "OK";
 
   String html = "<html><head><meta charset='UTF-8'></head><body>";
+
+  html += "<h3>WiFi Setup</h3>";
+  html += "<form method='POST' action='/wifi'>";
+  html += "SSID:<br>";
+  html += "<select name='ssid'>";
+  html += getWiFiList();
+  html += "</select><br>";
+  html += "Password:<br><input name='pass' type='password'><br>";
+  html += "<input type='submit' value='Save'>";
+  html += "</form>";
+
   html += "<h2>Forecast Lab Config</h2>";
-
   html += "<p>Status: " + status + "</p>";
-
   html += "<form action='/save'>";
-
   html += "API Key:<br>";
   html += "<input name='api' value='" + cfgPtr->apiKey + "'><br>";
-
   html += "Lat:<br>";
   html += "<input name='lat' value='" + String(cfgPtr->lat, 6) + "'><br>";
-
   html += "Lon:<br>";
   html += "<input name='lon' value='" + String(cfgPtr->lon, 6) + "'><br>";
-
   html += "Region:<br>";
   html += "<select name='region'>" + options + "</select><br><br>";
 
   html += "<h3>Calibration</h3>";
-
   html += "Temp offset:<br>";
   html += "<input name='to' value='" + String(cfgPtr->tempOffset, 1) + "'><br>";
-
   html += "Humidity offset:<br>";
   html += "<input name='ho' value='" + String(cfgPtr->humOffset, 1) + "'><br><br>";
-
   html += "<h3>CO2</h3>";
   html += "<button onclick=\"fetch('/calibrate',{method:'POST'})\">Calibrate CO2</button>";
 
@@ -208,6 +227,17 @@ void setupWeb(AppConfig &cfg)
     } });
   server.on("/version", HTTP_GET, []()
             { server.send(200, "text/plain", FW_VERSION); });
+  server.on("/wifi", HTTP_POST, []()
+            {
+    String ssid = server.arg("ssid");
+    String pass = server.arg("pass");
+
+    saveWiFi(ssid, pass);
+
+    server.send(200, "text/html", "Saved. Rebooting...");
+
+    delay(1000);
+    ESP.restart(); });
   server.begin();
 }
 
@@ -220,4 +250,27 @@ void handleCalibrate()
 {
   calibrateCO2(415);
   server.send(200, "text/plain", "CO2 calibrated");
+}
+
+void saveWiFi(String ssid, String pass)
+{
+  prefs.begin("wifi", false);
+
+  prefs.putString("ssid", ssid);
+  prefs.putString("pass", pass);
+
+  prefs.end();
+}
+
+String saved_ssid;
+String saved_pass;
+
+void loadWiFi()
+{
+  prefs.begin("wifi", true);
+
+  saved_ssid = prefs.getString("ssid", "");
+  saved_pass = prefs.getString("pass", "");
+
+  prefs.end();
 }

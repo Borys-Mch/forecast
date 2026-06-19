@@ -1,11 +1,12 @@
 #include "secrets.h"
 #include "config.h"
 #include "web.h"
+#include "mqtt.h"
 #include "alerts.h"
 #include "display.h"
 #include "weather.h"
 #include "sensors.h"
-#include "mqtt.h"
+#include "fallback.h"
 
 bool hasData = false;
 
@@ -27,30 +28,41 @@ void setup()
   delay(1000);
 
   led.begin();
-  WiFi.mode(WIFI_STA);
-  WiFi.setSleep(false);
-  WiFi.begin(WIFI_SSID, WIFI_PASS);
 
-  while (WiFi.status() != WL_CONNECTED)
+  WiFi.setSleep(false);
+
+  loadWiFi();
+
+  bool wifiOk = false;
+
+  if (saved_ssid != "")
   {
-    delay(500);
-    Serial.print(".");
+    wifiOk = connectWiFi(saved_ssid.c_str(), saved_pass.c_str());
+  }
+
+  if (!wifiOk)
+  {
+    startAP();
   }
 
   loadConfig(config);
   setTempOffset(config.tempOffset);
   setHumidityOffset(config.humOffset);
 
-  Serial.println("\nWiFi OK");
+  Serial.println("System ready");
 
   pinMode(BTN_PIN, INPUT_PULLUP);
-  updateWeather(config.apiKey, config.lat, config.lon);
+
+  if (wifiOk)
+  {
+    updateWeather(config.apiKey, config.lat, config.lon);
+    mqttInit();
+  }
 
   initDisplay();
   setBrightness(config.brightness);
   initSensors();
   setupWeb(config);
-  mqttInit();
 }
 
 void loop()
