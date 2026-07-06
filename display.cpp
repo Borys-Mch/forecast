@@ -7,7 +7,7 @@
 #include "sensors.h"
 
 U8G2_FOR_ADAFRUIT_GFX u8g2;
-Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_RST);
+Adafruit_ST7796S tft = Adafruit_ST7796S(TFT_CS, TFT_DC, TFT_RST);
 bool forceRedraw = false;
 
 static ScreenState currentScreen = SCREEN_MAIN;
@@ -172,7 +172,8 @@ void initDisplay()
   pinMode(TFT_BL, OUTPUT);
   analogWrite(TFT_BL, 255);
   SPI.begin(TFT_SCK, TFT_MISO, TFT_MOSI, TFT_CS);
-  tft.init(240, 320);
+  tft.init(320, 480, 0, 0, ST7796S_BGR);
+  tft.invertDisplay(true);
   tft.setRotation(2);
   u8g2.begin(tft);
   tft.fillScreen(ST77XX_BLACK);
@@ -268,7 +269,7 @@ void drawMainScreen(bool hasData, bool alert)
       lastWindSpeed = speed;
 
       int iconSize = 70;
-      int x = tft.width() - 225;
+      int x = tft.width() - 305;
       int y = 51;
 
       tft.fillRect(x, y, 230, 110, ST77XX_BLACK);

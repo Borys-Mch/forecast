@@ -7,7 +7,7 @@
 #include <Preferences.h>
 #include <PubSubClient.h>
 #include <Adafruit_GFX.h>
-#include <Adafruit_ST7789.h>
+#include <Adafruit_ST7796S.h>
 #include <SensirionI2cSps30.h>
 #include <Adafruit_NeoPixel.h>
 #include <U8g2_for_Adafruit_GFX.h>
@@ -19,12 +19,12 @@
 
 // ===== ПІНИ =================================================
 #define TFT_CS 1
-#define TFT_DC 2
-#define TFT_RST 3
+#define TFT_DC 3
+#define TFT_RST 2
 #define TFT_MISO -1
 #define TFT_MOSI 6
 #define TFT_SCK 7
-#define TFT_BL 23
+#define TFT_BL 0
 #define BTN_PIN 9
 
 #define FW_VERSION "1.0.5"
